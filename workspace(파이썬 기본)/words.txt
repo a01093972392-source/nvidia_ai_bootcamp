@@ -1,0 +1,9 @@
+apple:사과
+banana:바나나
+peach:복숭아
+watermelon:수박
+orange:오렌지
+grape:포도
+melon:멜론
+pineapple:파인애플
+raddish:홍당무
