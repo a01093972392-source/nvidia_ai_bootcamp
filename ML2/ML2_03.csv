@@ -1,0 +1,7 @@
+verified_purchase,sentiment,proportion
+False,positive,40.8
+False,negative,33.33
+False,neutral,25.87
+True,positive,42.15
+True,negative,31.08
+True,neutral,26.77

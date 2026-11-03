@@ -1,0 +1,5 @@
+account_tenure_days,is_fraud,proportion
+False,0,90.01
+False,1,9.99
+True,0,91.67
+True,1,8.33
