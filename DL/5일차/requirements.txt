@@ -1,0 +1,5 @@
+gradio
+fastmcp
+openai
+requests
+python-dotenv
