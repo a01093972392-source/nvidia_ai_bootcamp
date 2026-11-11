@@ -16,6 +16,7 @@ MODEL = "gpt-4o-mini"
 DEFAULT_INSTRUCTION = "당신은 친절한 AI 도우미입니다. 사용자의 질문에 한국어로 답하세요."
 DEFAULT_TEMPERATURE = 0.7
 DEFAULT_MAX_TOKENS = 500
+
 TOKEN_CHOICES = [50, 100, 200, 500, 1000]
 
 
