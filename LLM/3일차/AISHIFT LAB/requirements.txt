@@ -1,0 +1,6 @@
+# client.py는 fastmcp 3.x / 4.x 모두에서 동작합니다.
+fastmcp>=3.0
+openai>=2.0
+requests>=2.31
+python-dotenv>=1.0
+rich>=13.0

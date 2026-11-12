@@ -1,0 +1,580 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI SHIFT LAB 탈출</title>
+<style>
+  :root {
+    --bg: #05060d; --panel: #0a0d1a; --text: #cfe9ff; --dim: #6b7ba0;
+    --accent: #00e5ff; --accent2: #ff2bd6; --warn: #ffd400;
+  }
+  body[data-scene="intro"]  { --accent: #00e5ff; --accent2: #ff2bd6; }
+  body[data-scene="lab"]    { --accent: #39ff88; --accent2: #00e5ff; }
+  body[data-scene="server"] { --accent: #ff2bd6; --accent2: #00e5ff; }
+  body[data-scene="control"] { --accent: #ff4a5e; --accent2: #ffd400; }
+  body[data-scene="room"]   { --accent: #3d7bff; --accent2: #00e5ff; }
+  body[data-scene="escape"] { --accent: #7dff6a; --accent2: #ffffff; }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: "D2Coding", "Cascadia Mono", Consolas, "Malgun Gothic", monospace;
+    display: flex; flex-direction: column; overflow: hidden;
+    transition: --accent .6s;
+  }
+  body::after { /* 스캔라인 + 비네트 */
+    content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 50;
+    background:
+      repeating-linear-gradient(0deg, rgba(255,255,255,.035) 0 1px, transparent 1px 3px),
+      radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,.65) 100%);
+  }
+  header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 18px; border-bottom: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+    background: linear-gradient(90deg, rgba(0,229,255,.06), rgba(255,43,214,.06));
+  }
+  .logo { font-weight: 700; letter-spacing: .25em; color: var(--accent);
+          text-shadow: 0 0 8px var(--accent), 2px 0 var(--accent2); animation: glitch 5s infinite; }
+  @keyframes glitch {
+    0%, 92%, 100% { transform: none; }
+    93% { transform: translateX(-2px); } 95% { transform: translateX(3px) skewX(6deg); } 97% { transform: translateX(-1px); }
+  }
+  header .right { display: flex; gap: 10px; align-items: center; color: var(--dim); font-size: 13px; }
+  button {
+    background: transparent; color: var(--accent); border: 1px solid var(--accent);
+    padding: 5px 12px; font: inherit; cursor: pointer; border-radius: 2px;
+  }
+  button:hover { background: color-mix(in srgb, var(--accent) 18%, transparent); box-shadow: 0 0 10px var(--accent); }
+
+  main { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 300px; gap: 12px; padding: 12px; }
+  .col { min-height: 0; display: flex; flex-direction: column; gap: 12px; }
+  .box {
+    background: var(--panel); border: 1px solid color-mix(in srgb, var(--accent) 55%, transparent);
+    box-shadow: 0 0 14px color-mix(in srgb, var(--accent) 25%, transparent), inset 0 0 30px rgba(0,0,0,.5);
+    border-radius: 3px; position: relative;
+  }
+  .box > h3 { margin: 0; padding: 6px 12px; font-size: 12px; letter-spacing: .2em; color: var(--accent);
+              border-bottom: 1px solid color-mix(in srgb, var(--accent) 30%, transparent); }
+
+  /* 장면: 그림 영역 + 아래 설명 띠 (글자가 그림을 가리지 않는다) */
+  #stage { height: 48%; min-height: 250px; display: flex; flex-direction: column; overflow: hidden; }
+  #scene { position: relative; flex: 1; min-height: 0; background: #03050c; }
+  #scene svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  svg text { font-family: inherit; }
+  svg text.lbl { font-size: calc(var(--lbl, 18) * 1px); font-weight: 700; stroke: #02030a; stroke-width: calc(var(--lbl, 18) * .3px);
+                 paint-order: stroke; stroke-linejoin: round; }
+  svg text.deco { stroke: none; }
+  #caption { display: flex; align-items: center; gap: 16px; padding: 8px 14px; background: #060916;
+             border-top: 1px solid color-mix(in srgb, var(--accent) 45%, transparent); }
+  #sceneTitle { flex: none; font-size: 16px; letter-spacing: .2em; color: var(--accent); border: 1px solid var(--accent);
+                padding: 2px 12px; text-shadow: 0 0 10px var(--accent); }
+  #mood { flex: 1; min-width: 0; font-size: 14px; color: #e2edff; font-style: italic; line-height: 1.5; }
+  .flash { animation: flash .45s ease-out; }
+  @keyframes flash { 0% { filter: brightness(1.5) saturate(.7); } 100% { filter: none; } }
+  .neon-flicker { animation: flicker 3.2s infinite; }
+  @keyframes flicker { 0%,18%,22%,62%,64%,100% { opacity: 1; } 20%,63% { opacity: .35; } }
+  .door-open { animation: doorOpen 2s ease-out forwards; transform-origin: left center; transform-box: fill-box; }
+  @keyframes doorOpen { to { transform: scaleX(.12); } }
+  .pick { animation: pick .6s ease-in-out 3; }
+  @keyframes pick { 50% { filter: drop-shadow(0 0 12px #fff) brightness(1.6); } }
+  /* 문이 열리는 연출: 문짝이 줄어들며 안쪽 빛이 드러난다 */
+  .door-leaf { transform-box: fill-box; transform-origin: left center; }
+  .door-light { opacity: 0; }
+  .opening .door-leaf { animation: leafOpen .9s cubic-bezier(.6,0,.3,1) forwards; }
+  .opening .door-light { animation: lightOn .9s ease-in forwards; }
+  @keyframes leafOpen { to { transform: scaleX(.08); } }
+  @keyframes lightOn { to { opacity: 1; } }
+  /* 장소 전환: 닫힌 문이 가운데부터 갈라지며 새 장면이 드러난다 */
+  #doorfx { position: absolute; inset: 0; z-index: 5; pointer-events: none; overflow: hidden; }
+  #doorfx .leaf { position: absolute; top: 0; bottom: 0; width: 50.6%;
+    background:
+      radial-gradient(circle at 14px 14px, #8fa3c8 2px, transparent 3px) 0 0 / 56px 56px,
+      repeating-linear-gradient(0deg, transparent 0 58px, rgba(0,0,0,.45) 58px 60px),
+      linear-gradient(90deg, #1b2640, #4a5a82 50%, #232d4a);
+    border: 2px solid #0a1020; transition: transform .26s ease-in; }
+  #doorfx .leaf::after { content: ""; position: absolute; top: 0; bottom: 0; width: 16px;
+    background: repeating-linear-gradient(135deg, #ffd400 0 8px, #111522 8px 16px); }
+  #doorfx .leaf.l { left: 0; transform: translateX(-102%); } #doorfx .leaf.l::after { right: 0; }
+  #doorfx .leaf.r { right: 0; transform: translateX(102%); } #doorfx .leaf.r::after { left: 0; }
+  #doorfx.closed .leaf { transform: none; }
+  #doorfx.opening .leaf { transition: transform .85s cubic-bezier(.65,0,.25,1); }
+  #doorfx .slit { position: absolute; top: 0; bottom: 0; left: 50%; width: 3px; margin-left: -1.5px; opacity: 0;
+    background: #eafff0; box-shadow: 0 0 36px 16px rgba(190,255,215,.85); }
+  #doorfx.closed .slit { opacity: 1; }
+  #doorfx.opening .slit { opacity: 0; width: 46%; margin-left: -23%; transition: all .85s ease-out; }
+  /* 문 없이 장소가 바뀔 때(게임 시작, 순간 이동 등): 스캔라인이 훑고 지나가며 장소 이름 카드가 뜬다 */
+  #warpfx { position: absolute; inset: 0; z-index: 6; pointer-events: none; overflow: hidden; opacity: 0;
+    background: radial-gradient(ellipse at center, #06202c 0%, #02030a 75%); }
+  #warpfx.on { opacity: 1; transition: opacity .25s ease-in; }
+  #warpfx.off { opacity: 0; transition: opacity .8s ease-out; }
+  #warpfx::before { content: ""; position: absolute; inset: 0;
+    background: repeating-linear-gradient(0deg, rgba(0,229,255,.22) 0 2px, transparent 2px 7px); animation: warpScan .4s linear infinite; }
+  #warpfx .bar { position: absolute; left: 0; right: 0; height: 22%;
+    background: linear-gradient(to bottom, transparent, rgba(0,229,255,.6), rgba(255,43,214,.35), transparent); animation: warpBar .75s linear infinite; }
+  #warpfx .ttl { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+    color: #d8fdff; text-shadow: 0 0 14px #00e5ff, 3px 0 #ff2bd6, -3px 0 #00e5ff; animation: warpGlitch .3s steps(2) infinite; }
+  #warpfx .ttl small { font-size: 12px; letter-spacing: .5em; color: #8fe9ff; }
+  #warpfx .ttl b { font-size: 28px; letter-spacing: .3em; font-weight: 700; }
+  @keyframes warpScan { to { background-position: 0 7px; } }
+  @keyframes warpBar { from { top: -25%; } to { top: 105%; } }
+  @keyframes warpGlitch { 50% { transform: translateX(3px) skewX(5deg); } }
+  .rays { animation: pulse 2.4s ease-in-out infinite; }
+  @keyframes pulse { 50% { opacity: .5; } }
+
+  /* 로그 */
+  #logbox { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  #log { flex: 1; overflow-y: auto; padding: 14px 18px; line-height: 1.85; font-size: 15.5px; }
+  #log::-webkit-scrollbar { width: 8px; } #log::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--accent) 40%, transparent); }
+  .line { margin: 0 0 12px; max-width: 960px; white-space: pre-wrap; word-break: break-word; }
+  .me   { color: var(--accent2); } .me::before { content: "▶ "; }
+  .call { color: #8ea0c8; font-size: 13px; } .call::before { content: "⚙ "; }
+  .game { color: #f1f9ff; font-size: 16px; border-left: 3px solid var(--accent); padding-left: 10px;
+          text-shadow: 0 0 6px color-mix(in srgb, var(--accent) 45%, transparent); }
+  .tool { color: #e6a8ff; border: 1px dashed #b46bff; padding: 6px 10px; }
+  .tool::before { content: "🔧 내 도구 결과\A"; white-space: pre; color: #b46bff; font-size: 11px; }
+  .ai   { color: #d8f3ff; white-space: normal; }
+  .ai .tag { color: var(--accent); font-weight: 700; margin-right: .5em; }
+  .ai strong { color: #ffffff; font-weight: 700; background: color-mix(in srgb, var(--accent) 22%, transparent); padding: 0 .25em; }
+  .ai code { color: #8fe9ff; font-size: .9em; background: rgba(255,255,255,.07); padding: 0 .3em; border-radius: 2px; }
+  .ai .li { display: flex; gap: .7em; padding-left: 1.2em; }
+  .ai .li .mk { color: var(--accent); flex: none; min-width: 1.6em; }
+  .err  { color: #ff5470; }
+  .guard { color: #ffe27a; border: 1px solid #ffd400; background: rgba(255,212,0,.08); padding: 8px 12px; }
+  .sys  { color: #8ea0c8; font-size: 12.5px; letter-spacing: .04em; border-left: 3px solid #4a5a80; padding-left: 10px; }
+  .sid  { color: #6b7ba0; font-size: 11.5px; margin-top: -6px; word-break: break-all; }
+  .place { border: 1px solid color-mix(in srgb, var(--accent) 60%, transparent); background: rgba(0,0,0,.35); padding: 10px 14px 12px; }
+  .place .pt { color: var(--accent); font-size: 17px; font-weight: 700; letter-spacing: .12em; margin-bottom: 6px;
+               text-shadow: 0 0 8px var(--accent); }
+  .place .sub { color: var(--accent2); font-size: 12px; letter-spacing: .2em; margin: 8px 0 2px; }
+  .place .it { display: flex; gap: 12px; align-items: baseline; padding: 1px 0; }
+  .place .it b { font-weight: 400; color: #f1f9ff; min-width: 7.5em; }
+  .place .it i { font-style: normal; color: #6b7ba0; font-size: 12px; }
+  .banner { text-align: center; color: var(--accent); letter-spacing: .4em; margin: 16px 0;
+            border-top: 1px solid var(--accent); border-bottom: 1px solid var(--accent); padding: 6px 0;
+            text-shadow: 0 0 10px var(--accent); animation: flash 1s; }
+  .cursor::after { content: "▌"; animation: blink 1s steps(2) infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  form { display: flex; gap: 8px; padding: 10px; border-top: 1px solid color-mix(in srgb, var(--accent) 30%, transparent); }
+  #input {
+    flex: 1; background: #02030a; color: var(--text); border: 1px solid color-mix(in srgb, var(--accent) 50%, transparent);
+    padding: 10px 12px; font: inherit; outline: none; border-radius: 2px;
+  }
+  #input:focus { border-color: var(--accent); box-shadow: 0 0 10px var(--accent); }
+  #input:disabled { opacity: .5; }
+
+  /* 사이드 */
+  aside .box { flex: 0 0 auto; }
+  #notesBox { flex: 1 1 auto !important; min-height: 0; display: flex; flex-direction: column; }
+  #notes { overflow-y: auto; padding: 8px 12px; font-size: 13px; line-height: 1.6; flex: 1; }
+  #notes .sc { color: var(--accent); margin-top: 8px; letter-spacing: .15em; }
+  #notes .n  { color: var(--text); opacity: .85; margin: 2px 0 6px; border-left: 2px solid var(--dim); padding-left: 7px; }
+  .kv { padding: 8px 12px; font-size: 13px; color: #8ea0c8; line-height: 1.7; }
+  .kv b { color: var(--text); font-weight: 400; }
+  #places .row { margin: 3px 0; font-size: 13.5px; } #places .tag { color: var(--accent); } #places .ex { color: var(--accent2); }
+  #chips { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 12px; }
+  .chip { border: 1px solid #b46bff; color: #e6a8ff; font-size: 12px; padding: 2px 8px; border-radius: 10px; }
+  .chip.hot { box-shadow: 0 0 12px #b46bff; background: rgba(180,107,255,.25); }
+  .quick { display: flex; gap: 6px; flex-wrap: wrap; padding: 8px 12px; }
+  .quick button { font-size: 12px; padding: 3px 8px; }
+  #think { color: var(--warn); font-size: 12px; padding: 0 14px 6px; min-height: 20px; }
+
+  @media (max-width: 860px) { main { grid-template-columns: 1fr; overflow-y: auto; } body { overflow: auto; } aside { display: none; } }
+</style>
+</head>
+<body data-scene="intro">
+<header>
+  <div class="logo">AI SHIFT LAB // ESCAPE</div>
+  <div class="right">
+    <span id="status">연결 중…</span>
+    <button id="sound" type="button" title="효과음">🔊</button>
+  </div>
+</header>
+<main>
+  <div class="col">
+    <div id="stage" class="box"><div id="scene"></div><div id="caption"><div id="sceneTitle"></div><div id="mood"></div></div></div>
+    <div id="logbox" class="box">
+      <h3>TERMINAL</h3>
+      <div id="log"></div>
+      <div id="think"></div>
+      <form id="form" autocomplete="off">
+        <input id="input" placeholder="자연어로 말하세요. 예) 게임 시작해 / 주변 둘러봐 / 힌트 줘" autofocus>
+        <button type="submit">SEND</button>
+      </form>
+    </div>
+  </div>
+  <aside class="col">
+    <div class="box"><h3>STATUS</h3>
+      <div class="kv">현재 장소 <b id="kvScene">-</b><br>진행 턴 <b id="kvTurn">0</b></div>
+      <div class="quick">
+        <button type="button" data-say="게임 시작해">시작</button>
+        <button type="button" data-say="주변 둘러봐">둘러보기</button>
+        <button type="button" data-say="힌트 줘">힌트</button>
+        <button type="button" data-say="상태 알려줘">상태</button>
+      </div>
+    </div>
+    <div class="box"><h3>이 장소에서</h3><div class="kv" id="places">둘러보면 이곳의 대상이 표시됩니다.</div></div>
+    <div class="box"><h3>MY TOOLS (my_tools.py)</h3><div id="chips"></div></div>
+    <div class="box" id="notesBox"><h3>단서 노트</h3><div id="notes"></div></div>
+  </aside>
+</main>
+
+<script src="/scenes.js"></script>
+<script>
+const $ = (s) => document.querySelector(s);
+/* scenes.js를 못 받았을 때(서버를 재시작하지 않은 경우): 그림 없이도 동작하게 하고 이유를 알려준다 */
+const SCENES_MISSING = typeof SCENE_ART === "undefined";
+if (SCENES_MISSING) { window.SCENE_VIEW = { w: 800, h: 350 }; window.SCENE_ART = new Proxy({}, { get: () => () => "" }); }
+const log = $("#log"), input = $("#input"), form = $("#form");
+
+const SCENES = {
+  intro:  { title: "AI SHIFT LAB", mood: "비상 전원 복구. 깜빡거리는 모니터 앞에서 눈을 뜬다…" },
+  lab:    { title: "AI 연구실",    mood: "오래전에 폐쇄된 연구실. 책상, 낡은 PC, 잠긴 보관함이 보인다." },
+  server: { title: "서버실",       mood: "꺼진 서버 랙들 사이로 비상등만 붉게 깜빡인다." },
+  control: { title: "보안 통제실", mood: "벽을 가득 채운 모니터에 연구소 곳곳의 영상이 흐른다." },
+  room:   { title: "연구소",       mood: "복도의 조명은 꺼져 있다." },
+  escape: { title: "탈 출 성 공",  mood: "잠겨 있던 외부 출입문이 열린다. 바깥 공기다!" },
+};
+
+let placeName = null, sceneKey = null, turn = 0, muted = false;
+const noteSeen = new Set();
+
+const visited = [];  // 지금까지 가 본 장소 이름
+const placeCtx = {};  // 장소 이름 → 마지막으로 본 오브젝트/출구 (서버가 observe로 알려준 것)
+let itemsSig = null;
+/* 장소 이름: 응답에 이름이 있으면 그것, 없고 같은 종류의 장면이면 지금 이름을 그대로 쓴다.
+   (조사 결과처럼 장소 박스가 없는 응답에서 이름이 기본값으로 돌아가면 '다른 장소'로 오인해 그림이 사라진다) */
+function placeNameFor(key, title) {
+  if (title) return title;
+  if (key === sceneKey && placeName) return placeName;
+  return SCENES[key] && SCENES[key].title;
+}
+function sceneWillChange(key, title) {
+  return key !== sceneKey || placeNameFor(key, title) !== placeName;
+}
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const reducedMotion = () => window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+/* 문 열리는 소리 (WebAudio): 기계음 스윕 + 공기 빠지는 소리 */
+function doorSound() {
+  if (muted) return;
+  try {
+    ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+    const t = ac.currentTime;
+    const o = ac.createOscillator(), g = ac.createGain();
+    o.type = "sawtooth"; o.frequency.setValueAtTime(70, t); o.frequency.linearRampToValueAtTime(150, t + 0.9);
+    g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.05, t + 0.15); g.gain.exponentialRampToValueAtTime(0.0001, t + 1.0);
+    o.connect(g); g.connect(ac.destination); o.start(t); o.stop(t + 1.05);
+    const buf = ac.createBuffer(1, Math.floor(ac.sampleRate * 0.6), ac.sampleRate), d = buf.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length);
+    const src = ac.createBufferSource(), f = ac.createBiquadFilter(), g2 = ac.createGain();
+    src.buffer = buf; f.type = "highpass"; f.frequency.value = 1800; g2.gain.value = 0.04;
+    src.connect(f); f.connect(g2); g2.connect(ac.destination); src.start(t + 0.25);
+  } catch (e) { /* 소리 없이 진행 */ }
+}
+
+/* 지금 장면에 있는 그 문이 열린다 (장소가 바뀌지 않아도). 그림에 없으면 false */
+function openDoorItem(id) {
+  const g = document.querySelector('#scene [data-item="' + id + '"]');
+  if (!g) return false;
+  g.classList.add("opening");
+  doorSound();
+  return true;
+}
+
+/* 이동 소리: 올라가는 스윕 */
+function warpSound() {
+  if (muted) return;
+  try {
+    ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+    const t = ac.currentTime, o = ac.createOscillator(), g = ac.createGain();
+    o.type = "square"; o.frequency.setValueAtTime(180, t); o.frequency.exponentialRampToValueAtTime(1100, t + 0.4);
+    g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.035, t + 0.08); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.6);
+    o.connect(g); g.connect(ac.destination); o.start(t); o.stop(t + 0.65);
+  } catch (e) { /* 소리 없이 진행 */ }
+}
+
+/* 문 없이 장소가 바뀔 때: 화면이 스캔라인으로 덮이고(장면 교체) 장소 이름 카드와 함께 걷힌다 */
+async function warpTransition(swap, title) {
+  window.__warpFxPlays = (window.__warpFxPlays || 0) + 1;
+  if (reducedMotion()) { swap(); return; }
+  const fx = document.createElement("div");
+  fx.id = "warpfx";
+  const bar = document.createElement("div"); bar.className = "bar";
+  const ttl = document.createElement("div"); ttl.className = "ttl";
+  const small = document.createElement("small"); small.textContent = "MOVING TO";
+  const name = document.createElement("b"); name.textContent = title;
+  ttl.append(small, name); fx.append(bar, ttl);
+  $("#scene").appendChild(fx);
+  void fx.offsetWidth;
+  fx.className = "on"; warpSound(); await sleep(320);
+  swap();
+  fx.className = "off"; await sleep(850);
+  fx.remove();
+}
+
+/* 장소 전환: 문이 닫혔다가(장면 교체) 가운데부터 열린다. swap()은 닫힌 순간에 부른다 */
+async function doorTransition(swap, ev) {
+  window.__doorFxPlays = (window.__doorFxPlays || 0) + 1;
+  if (reducedMotion()) { swap(); return; }
+  if (ev && ev.id && openDoorItem(ev.id)) await sleep(650);  // 먼저 그 문이 열린다
+  const fx = document.createElement("div");
+  fx.id = "doorfx"; fx.innerHTML = '<div class="leaf l"></div><div class="leaf r"></div><div class="slit"></div>';
+  $("#scene").appendChild(fx);
+  void fx.offsetWidth;
+  fx.className = "closed"; await sleep(300);
+  swap();
+  doorSound();
+  fx.className = "opening"; await sleep(900);
+  fx.remove();
+}
+function setScene(key, announce = true, title = null, ctx = null) {
+  if (!SCENES[key]) return;
+  const name = placeNameFor(key, title);
+  const sig = ctx && ctx.objects ? JSON.stringify([ctx.objects, ctx.exits]) : null;
+  const sameScene = key === sceneKey && name === placeName;
+  if (sameScene && (sig === null || sig === itemsSig)) return;  // 바뀐 게 없다
+  if (sig !== null) placeCtx[name] = ctx;
+  const art = sig !== null ? ctx : placeCtx[name] || null;
+  itemsSig = sig !== null ? sig : (placeCtx[name] ? JSON.stringify([placeCtx[name].objects, placeCtx[name].exits]) : null);
+  const changed = !sameScene;
+  if (ctx && ctx.objects && !visited.includes(name)) visited.push(name);
+  sceneKey = key; placeName = name;
+  document.body.dataset.scene = key;
+  document.querySelector("#scene svg")?.remove();
+  $("#scene").insertAdjacentHTML("afterbegin", `<svg viewBox="0 0 ${SCENE_VIEW.w} ${SCENE_VIEW.h}" preserveAspectRatio="xMidYMid meet">${SCENE_ART[key](art ? { ...art, visited: visited.filter((v) => v !== name) } : art)}</svg>`);
+  fitLabels();
+  if (changed) { $("#scene").classList.remove("flash"); void $("#scene").offsetWidth; $("#scene").classList.add("flash"); }
+  $("#sceneTitle").textContent = name;
+  $("#mood").textContent = SCENES[key].mood;
+  $("#kvScene").textContent = name;
+  if (announce && changed) {
+    const b = document.createElement("div"); b.className = "banner"; b.textContent = "▓▓ " + name + " ▓▓";
+    log.appendChild(b); scroll();
+  }
+  if (announce && changed) { beep(key === "escape" ? [523, 659, 784, 1047] : [330, 440], 0.09); if (key === "escape") doorSound(); }
+}
+
+/* 이름표 글자는 화면 배율과 무관하게 일정한 크기(약 17px)로 보이게 보정한다 */
+function fitLabels() {
+  const svg = document.querySelector("#scene svg");
+  if (!svg) return;
+  const r = svg.getBoundingClientRect();
+  const scale = Math.min(r.width / SCENE_VIEW.w, r.height / SCENE_VIEW.h) || 1;
+  const px = Math.max(14, Math.min(18, 17));
+  svg.style.setProperty("--lbl", String(Math.min(26, px / scale)));
+}
+window.addEventListener("resize", fitLabels);
+
+/* ── 효과음 (WebAudio, 외부 파일 없음) ──────── */
+let ac = null;
+function beep(freqs, dur = 0.07) {
+  if (muted) return;
+  try {
+    ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+    freqs.forEach((f, i) => {
+      const o = ac.createOscillator(), g = ac.createGain();
+      o.type = "square"; o.frequency.value = f; g.gain.value = 0.03;
+      o.connect(g); g.connect(ac.destination);
+      const t = ac.currentTime + i * dur; o.start(t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur); o.stop(t + dur);
+    });
+  } catch (e) { /* 소리 없이 진행 */ }
+}
+$("#sound").onclick = () => { muted = !muted; $("#sound").textContent = muted ? "🔇" : "🔊"; };
+
+/* ── 로그 ─────────────────────────────────── */
+function scroll() { log.scrollTop = log.scrollHeight; }
+function add(cls, text) {
+  const d = document.createElement("div"); d.className = "line " + cls; d.textContent = text;
+  log.appendChild(d); scroll(); return d;
+}
+let skip = false;
+async function typeLine(cls, text) {
+  const d = add(cls, "");
+  if (skip || text.length > 600) { d.textContent = text; scroll(); return; }
+  d.classList.add("cursor");
+  for (let i = 0; i < text.length; i++) {
+    if (skip) { d.textContent = text; break; }
+    d.textContent += text[i];
+    if (i % 3 === 0) { scroll(); await new Promise((r) => setTimeout(r, 12)); }
+  }
+  d.classList.remove("cursor"); scroll();
+}
+/* AI 답변의 간단한 마크다운(**굵게**, `코드`, 번호/글머리 목록)을 별표 없이 읽기 좋게 보여준다 */
+function inlineMd(parent, s) {
+  const re = /\*\*(.+?)\*\*|`([^`]+)`/g;
+  let last = 0, m;
+  while ((m = re.exec(s))) {
+    if (m.index > last) parent.append(s.slice(last, m.index));
+    const el = document.createElement(m[1] ? "strong" : "code");
+    el.textContent = m[1] || m[2];
+    parent.append(el);
+    last = re.lastIndex;
+  }
+  if (last < s.length) parent.append(s.slice(last));
+}
+function renderAI(text) {
+  const d = document.createElement("div"); d.className = "line ai";
+  const tag = document.createElement("span"); tag.className = "tag"; tag.textContent = "[AI]"; d.appendChild(tag);
+  let firstText = true;
+  for (const raw of text.split(/\r?\n/)) {
+    const line = raw.trim();
+    if (!line) continue;
+    const li = line.match(/^(\d+[.)]|[-*•])\s+(.*)$/);
+    if (li) {
+      const row = document.createElement("div"); row.className = "li";
+      const mk = document.createElement("span"); mk.className = "mk"; mk.textContent = /^\d/.test(li[1]) ? li[1] : "▸";
+      const body = document.createElement("span"); inlineMd(body, li[2]);
+      row.append(mk, body); d.appendChild(row);
+    } else {
+      const p = document.createElement(firstText ? "span" : "div");
+      inlineMd(p, line); d.appendChild(p);
+    }
+    firstText = false;
+  }
+  log.appendChild(d); scroll();
+}
+function renderPlace(ev) {
+  const d = document.createElement("div"); d.className = "line place";
+  const pt = document.createElement("div"); pt.className = "pt"; pt.textContent = ev.title; d.appendChild(pt);
+  const group = (name, items, mark) => {
+    if (!items.length) return;
+    const s = document.createElement("div"); s.className = "sub"; s.textContent = name; d.appendChild(s);
+    items.forEach((o) => { const r = document.createElement("div"); r.className = "it";
+      const b = document.createElement("b"); b.textContent = mark + " " + o.label;
+      const i = document.createElement("i"); i.textContent = o.id; r.append(b, i); d.appendChild(r); });
+  };
+  group("조사할 수 있는 것", ev.objects, "▸");
+  group("나가는 곳", ev.exits, "⇨");
+  log.appendChild(d); scroll();
+}
+async function renderGame(ev) {
+  if (ev.objects) { renderPlace(ev); return; }
+  const sid = [];
+  for (const raw of ev.text.split(/\r?\n/)) {
+    const line = raw.trim();
+    if (!line) continue;
+    if (/^-{3,}$/.test(line)) continue;
+    if (/^session_id:/.test(line) || /^이후 모든 호출/.test(line)) { sid.push(line); continue; }
+    if (/^\[SYSTEM\]/.test(line)) { add("sys", line); continue; }
+    await typeLine("game", line);
+  }
+  if (sid.length) add("sid", sid.join("  "));
+}
+function addNote(place, text) {
+  const key = place + "|" + text;
+  if (noteSeen.has(key)) return;
+  noteSeen.add(key);
+  const box = $("#notes");
+  const h = document.createElement("div"); h.className = "sc"; h.textContent = "// " + (SCENES[place]?.title || place);
+  const n = document.createElement("div"); n.className = "n"; n.textContent = text.length > 280 ? text.slice(0, 280) + "…" : text;
+  box.appendChild(h); box.appendChild(n); box.scrollTop = box.scrollHeight;
+}
+function showPlaces(ev) {
+  if (!ev.objects) return;
+  const box = $("#places"); box.innerHTML = "";
+  const row = (cls, label, id) => { const d = document.createElement("div"); d.className = "row"; d.innerHTML = `<span class="${cls}"></span> `;
+    d.firstChild.textContent = label; d.append(" "); const s = document.createElement("span"); s.style.opacity = ".5"; s.textContent = id; d.append(s); box.appendChild(d); };
+  ev.objects.forEach((o) => row("tag", "▸ " + o.label, o.id));
+  ev.exits.forEach((o) => row("ex", "⇨ " + o.label, o.id));
+  // 서버 응답에서 형식을 읽지 못한 줄은 버리지 않고 그대로 보여준다 (그림에 안 나온 이유를 확인할 수 있게)
+  (ev.unparsed || []).forEach((u) => {
+    const d = document.createElement("div"); d.className = "row unparsed"; d.style.opacity = ".7";
+    d.textContent = "⚠ 읽지 못한 줄: " + u; box.appendChild(d);
+  });
+}
+let lastArgs = "", pendingMove = null;
+/* 방금 조사한 대상(target=...)의 그림을 잠깐 강조한다 */
+function pickItem(args) {
+  lastArgs = args || "";
+  const m = /target=([A-Za-z0-9_]+)/.exec(lastArgs);
+  if (!m) return;
+  const g = document.querySelector('#scene [data-item="' + m[1] + '"]');
+  if (g) { g.classList.add("pick"); setTimeout(() => g.classList.remove("pick"), 1800); }
+}
+function hotChip(name) {
+  document.querySelectorAll(".chip").forEach((c) => {
+    if (c.textContent === name) { c.classList.add("hot"); setTimeout(() => c.classList.remove("hot"), 2500); }
+  });
+}
+
+/* ── 서버 통신 ────────────────────────────── */
+async function say(text) {
+  add("me", text); turn++; $("#kvTurn").textContent = turn;
+  input.disabled = true; $("#think").textContent = "▒ AI가 처리 중…";
+  skip = false;
+  try {
+    const res = await fetch("/api/say", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text }) });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || res.status);
+    for (const ev of data.events) {
+      if (ev.kind === "call") { add("call", `${ev.name}(${ev.args})`); beep([880], 0.05); hotChip(ev.name); pickItem(ev.args); }
+      else if (ev.kind === "door") { if (ev.move) pendingMove = ev; else openDoorItem(ev.id); }
+      else if (ev.kind === "guard") { add("guard", ev.text); beep([220, 160], 0.1); }
+      else if (ev.kind === "game") {
+        const swap = () => setScene(ev.scene, true, ev.title || null, ev);
+        if (sceneWillChange(ev.scene, ev.title) && ev.scene !== "escape") {
+          if (pendingMove) await doorTransition(swap, pendingMove);
+          else if (ev.objects) await warpTransition(swap, ev.title || (SCENES[ev.scene] && SCENES[ev.scene].title) || "");
+          else swap();
+        } else swap();
+        pendingMove = null;
+        pickItem(lastArgs); showPlaces(ev); await renderGame(ev); if (!ev.objects) addNote(ev.title || ev.scene, ev.text.replace(/session_id:.*|이후 모든 호출.*|-{3,}/g, "").trim()); }
+      else if (ev.kind === "tool") { add("tool", ev.text); beep([660, 990], 0.06); }
+      else if (ev.kind === "ai") { renderAI(ev.text); }
+    }
+  } catch (e) {
+    pendingMove = null;
+    add("err", "⚠ " + e.message);
+  } finally {
+    input.disabled = false; $("#think").textContent = ""; input.focus();
+  }
+}
+form.addEventListener("submit", (e) => {
+  e.preventDefault();
+  const t = input.value.trim();
+  if (!t) return;
+  input.value = ""; say(t);
+});
+log.addEventListener("click", () => { skip = true; });
+document.querySelectorAll("[data-say]").forEach((b) => (b.onclick = () => { if (!input.disabled) say(b.dataset.say); }));
+
+/* ── 내 도구 목록 (my_tools.py 저장 시 실시간 갱신) ── */
+let revision = null, lastReloadError = null;
+function renderTools(st) {
+  const box = $("#chips"); box.innerHTML = "";
+  (st.tools || []).forEach((n) => { const c = document.createElement("span"); c.className = "chip"; c.textContent = n; box.appendChild(c); });
+  if (!(st.tools || []).length && st.ready) box.textContent = "등록된 도구 없음";
+}
+async function pollState(first) {
+  const st = await (await fetch("/api/state")).json();
+  $("#status").textContent = st.ready ? "● ONLINE" : "● OFFLINE";
+  const reloadError = st.reload_error || null;
+  if (first) {
+    renderTools(st);
+    add("game", "연구소 시스템에 접속했습니다.\n자연어로 말하면 AI가 알맞은 기능을 골라 실행합니다.");
+    if (st.error) { add("err", "⚠ " + st.error); input.disabled = true; }
+    if (reloadError) add("err", "⚠ my_tools.py 오류 (이전 도구 유지): " + reloadError);
+  } else if (st.revision !== revision) {
+    if (reloadError) {
+      if (reloadError !== lastReloadError) add("err", "⚠ my_tools.py를 다시 읽지 못했습니다 (이전 도구 유지): " + reloadError);
+    } else {
+      renderTools(st);
+      add("sys", "🔧 my_tools.py 변경 감지 — 도구 " + st.tools.length + "개 다시 불러옴: " + (st.tools.join(", ") || "없음"));
+      beep([660, 880], 0.06);
+      document.querySelectorAll(".chip").forEach((c) => { c.classList.add("hot"); setTimeout(() => c.classList.remove("hot"), 2000); });
+    }
+  }
+  revision = st.revision; lastReloadError = reloadError;
+}
+(async () => {
+  setScene("intro", false);
+  if (SCENES_MISSING) add("err", "⚠ 장면 그림(scenes.js)을 불러오지 못했습니다. web_server.py를 Ctrl+C로 끄고 다시 실행하세요.");
+  try { await pollState(true); }
+  catch (e) { $("#status").textContent = "● OFFLINE"; add("err", "⚠ 서버에 연결하지 못했습니다."); }
+  setInterval(() => { pollState(false).catch(() => { $("#status").textContent = "● OFFLINE"; }); }, 1500);
+})();
+</script>
+</body>
+</html>
